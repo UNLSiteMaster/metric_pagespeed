@@ -19,6 +19,7 @@ class Metric extends MetricInterface
             array(
                 'passing_grade' => 70,
                 'strategy'      => 'mobile',
+                'api_params'    => array(),
             ), $options);
 
         parent::__construct($plugin_name, $options);
@@ -136,7 +137,7 @@ class Metric extends MetricInterface
     public function getPageSpeed($url)
     {
         $pageSpeed = new \PageSpeed\Insights\Service();
-        return $pageSpeed->getResults($url, 'en_us', $this->options['strategy']);
+        return $pageSpeed->getResults($url, 'en_us', $this->options['strategy'], $this->options['api_params']);
     }
 
     /**
