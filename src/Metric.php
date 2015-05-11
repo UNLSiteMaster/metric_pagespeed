@@ -138,4 +138,25 @@ class Metric extends MetricInterface
         $pageSpeed = new \PageSpeed\Insights\Service();
         return $pageSpeed->getResults($url, 'en_us', $this->options['strategy']);
     }
+
+    /**
+     * Format a value_found for presentation
+     *
+     * @param $machine_name
+     * @param $value_found
+     * @return mixed
+     */
+    function formatValueFound($machine_name, $value_found)
+    {
+        //Don't format it if nothing was logged
+        if (empty($value_found)) {
+            return $value_found;
+        }
+        
+        if ($machine_name == 'failing_google_page_speed_score') {
+            return $value_found;
+        }
+        
+        return 'impact: ' . $value_found;
+    }
 }
