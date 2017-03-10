@@ -54,12 +54,8 @@ class Metric extends MetricInterface
      */
     public function isPassFail()
     {
-        if (isset($this->options['pass_fail']) && $this->options['pass_fail'] == true) {
-            //Simulate a pass/fail metric grade
-            return true;
-        }
-
-        return false;
+        //This metric is always pass/fail
+        return true;
     }
 
     /**
@@ -80,17 +76,12 @@ class Metric extends MetricInterface
         $response = $this->getPageSpeed($uri);
         
         $score = $response['ruleGroups']['SPEED']['score'];
-
-        if (100 == $score) {
-            //Perfect page!!!
-            return true; 
-        }
         
         if ($score >= $this->options['passing_grade']) {
             //Not perfect, but passing
             $mark = $this->getMark('passing_google_page_speed_score', 'Passed: Google PageSpeed Score', 0);
         } else {
-            $mark = $this->getMark('failing_google_page_speed_score', 'Google PageSpeed Score', 10, '', 'Improve the Google PageSpeed score to at least ' . $this->options['passing_grade']);
+            $mark = $this->getMark('failing_google_page_speed_score', 'Google PageSpeed Score', 100-$score, '', 'Improve the Google PageSpeed score to at least ' . $this->options['passing_grade']);
         }
         
         $page->addMark($mark, array(
@@ -103,15 +94,36 @@ class Metric extends MetricInterface
                 continue;
             }
 
+            $point_deduction = 0;
+            $machine_name = $rule_name;
             if ($rule['ruleImpact'] == 0) {
-                //Skip rules that passed.
-                continue;
+                //list these as passing
+                $point_deduction = -1;
+                $machine_name = $machine_name . '_passing';
             }
             
-            $mark = $this->getMark(md5($rule_name), $rule['localizedRuleName'], 0, '', 'View the Google PageSpeed results for this page for more information on how to fix this issue.  Use the link to the service in the metric summary.');
+            $help = '';
+            if (isset($rule['urlBlocks'])) {
+                foreach ($rule['urlBlocks'] as $block) {
+                    $help .= $this->parseFormat($block['header']) . PHP_EOL . PHP_EOL;
+                    if (isset($block['urls'])) {
+                        foreach ($block['urls'] as $url) {
+                            $help .= '  * ' . $this->parseFormat($url['result']) . PHP_EOL;
+                        }
+                    }
+                }
+            }
+            
+            $summary = '';
+            if (isset($rule['summary'])) {
+                $this->parseFormat($rule['summary']);
+            }
+            
+            $mark = $this->getMark($machine_name, $rule['localizedRuleName'], $point_deduction, $summary);
 
             $page->addMark($mark, array(
-                'value_found' => $rule['ruleImpact']
+                'value_found' => $rule['ruleImpact'],
+                'help_text' => $help,
             ));
         }
 
@@ -136,8 +148,8 @@ class Metric extends MetricInterface
      */
     public function getPageSpeed($url)
     {
-        $pageSpeed = new \PageSpeed\Insights\Service();
-        return $pageSpeed->getResults($url, 'en_us', $this->options['strategy'], $this->options['api_params']);
+        $api = new Api();
+        return $api->getRawResults($url, 'en_us', $this->options['strategy'], $this->options['api_params']);
     }
 
     /**
@@ -159,5 +171,52 @@ class Metric extends MetricInterface
         }
         
         return 'impact: ' . $value_found;
+    }
+
+    /**
+     * Replaces all the placeholder with it's values
+     * and returns the parsed result
+     *
+     * @param array $data
+     * @return string
+     */
+    public function parseFormat(array $data)
+    {
+        $format = $data['format'];
+
+        //if arguments are given replace them in the format
+        if (isset ($data['args'])) {
+            foreach ($data['args'] as $arg) {
+                $key    = $arg['key'];
+                $type   = $arg['type'];
+                $value  = $arg['value'];
+
+                //hyperlink has a beginning and ending
+                if ($type == 'HYPERLINK') {
+                    $format = str_replace(
+                        '{{BEGIN_LINK}}',
+                        '[',
+                        $format);
+
+                    $format = str_replace(
+                        '{{END_LINK}}',
+                        "]($value)",
+                        $format);
+                } else if ($type == 'URL') {
+                    $format = str_replace(
+                        '{{'.$key.'}}',
+                        "[$value]($value)",
+                        $format);
+                } else {
+                    $format = str_replace(
+                        '{{'.$key.'}}',
+                        "$value",
+                        $format);
+                }
+            }
+        }
+
+        return $format;
+
     }
 }

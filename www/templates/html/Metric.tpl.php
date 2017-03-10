@@ -3,7 +3,7 @@ $url = 'https://developers.google.com/speed/pagespeed/insights/';
 ?>
 
 <p>
-    This metric uses <a href="<?php echo $url ?>">Google PageSpeed Insights service</a> to gauge how fast this page is. This metric is currently testing against the <strong><?php echo $context->options['strategy'] ?></strong> strategy.
+    This metric uses <a href="<?php echo $url ?>">Google PageSpeed Insights service</a> to gauge how fast this page is. This metric is currently testing against the <strong><?php echo $context->options['strategy'] ?></strong> strategy, and <strong>your page must score at or above <?php echo $context->options['passing_grade'] ?>%</strong> for this metric to pass.
 </p>
 
 <?php if (isset($parent) && $parent->context->getRawObject() instanceof \SiteMaster\Core\Auditor\Site\Page\MetricGrade): ?>
